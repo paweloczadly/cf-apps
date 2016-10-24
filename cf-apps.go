@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"strings"
 )
 
 var (
@@ -86,7 +87,7 @@ func connectCF(url string) ([]byte, error) {
 	req.Header.Set("Authorization", OAUTH_TOKEN)
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(nil)
+		log.Fatal(err)
 	}
 
 	return ioutil.ReadAll(resp.Body)
@@ -119,6 +120,10 @@ func displayApplicationDetails(application App) {
 }
 
 func fetchSpaces(body []byte) (map[string]string, error) {
+	if strings.Contains(string(body), "Invalid Auth Token") {
+		log.Fatal("Invalid Auth Token")
+	}
+
 	var resources struct {
 		Resources []Resource `json:"resources"`
 	}
