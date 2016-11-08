@@ -44,6 +44,7 @@ type AppDetails struct {
 		} `json:"usage"`
 		Host string `json:"host"`
 		Port int    `json:"port"`
+		Uris []string	`json:"uris"`
 	} `json:"stats"`
 }
 
@@ -114,7 +115,7 @@ func displayApplicationDetails(application App) {
 			log.Fatal(err)
 		}
 		for _, detailedApp := range details {
-			fmt.Println("\t" + application.Name + "-> " + detailedApp.Stats.Host + ":" + strconv.Itoa(detailedApp.Stats.Port))
+			fmt.Println("\t" + application.Name + "-> " + detailedApp.Stats.Host + ":" + strconv.Itoa(detailedApp.Stats.Port) + ", Uris: " + strings.Join(detailedApp.Stats.Uris, ", "))
 		}
 	}
 }
