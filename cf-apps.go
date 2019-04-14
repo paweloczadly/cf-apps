@@ -16,6 +16,7 @@ var (
 	CF_URL          string
 	OAUTH_TOKEN     string
 	SPACES_ENDPOINT string = "/v2/spaces"
+	ORGS_ENDPOINT   string = "/v2/organizations"
 	APPS_WG         sync.WaitGroup
 )
 
@@ -55,26 +56,41 @@ func main() {
 	CF_URL = os.Args[1]
 	OAUTH_TOKEN = os.Args[2]
 
-	body, err := connectCF(SPACES_ENDPOINT)
-	if err != nil {
-		log.Fatal(err)
-	}
-	spaces, err := fetchSpaces(body)
+	body, err := connectCF(ORGS_ENDPOINT)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for spaceName, guid := range spaces {
-		body, err := connectCF(SPACES_ENDPOINT + "/" + guid + "/summary")
+	orgs, err := fetchOrgs(body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for orgName, guid := range orgs {
+		fmt.Println(orgName)
+
+		body, err := connectCF(ORGS_ENDPOINT + "/" + guid + "/spaces")
 		if err != nil {
 			log.Fatal(err)
 		}
-		apps, err := fetchApps(body)
+
+		spaces, err := fetchSpaces(body)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(spaceName)
-		displayAppDetails(apps)
+
+		for spaceName, guid := range spaces {
+			body, err := connectCF(SPACES_ENDPOINT + "/" + guid + "/summary")
+			if err != nil {
+				log.Fatal(err)
+			}
+			apps, err := fetchApps(body)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println("\t" + spaceName)
+			displayAppDetails(apps)
+	  }
 	}
 }
 
@@ -115,9 +131,30 @@ func displayApplicationDetails(application App) {
 			log.Fatal(err)
 		}
 		for _, detailedApp := range details {
-			fmt.Println("\t" + application.Name + "-> " + detailedApp.Stats.Host + ":" + strconv.Itoa(detailedApp.Stats.Port) + ", Uris: " + strings.Join(detailedApp.Stats.Uris, ", "))
+			fmt.Println("\t\t" + application.Name + "-> " + detailedApp.Stats.Host + ":" + strconv.Itoa(detailedApp.Stats.Port) + ", Uris: " + strings.Join(detailedApp.Stats.Uris, ", "))
 		}
 	}
+}
+
+func fetchOrgs(body []byte) (map[string]string, error) {
+	if strings.Contains(string(body), "Invalid Auth Token") {
+		log.Fatal("Invalid Auth Token")
+	}
+
+	var resources struct {
+		Resources []Resource `json:"resources"`
+	}
+	err := json.Unmarshal(body, &resources)
+
+	orgs := make(map[string]string)
+	for _, res := range resources.Resources {
+		orgs[res.Entity.Name] = res.Metadata.Guid
+	}
+	if err != nil {
+		log.Println(string(body))
+		log.Fatal(err)
+	}
+	return orgs, err
 }
 
 func fetchSpaces(body []byte) (map[string]string, error) {
